@@ -1,5 +1,6 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
+import logo from '../assets/logo.svg'
 import '../styles/Header.css'
 
 const Header: React.FC = () => {
@@ -28,6 +29,11 @@ const Header: React.FC = () => {
                     <li>
                         <NavLink to="/settings" className={({ isActive }) => isActive ? "active" : ""}>
                             Settings
+                        </NavLink>
+                    </li>
+                    <li>
+                        <NavLink to="/trading" className={({ isActive }) => isActive ? 'active' : ''}>
+                            Trading
                         </NavLink>
                     </li>
                 </ul>

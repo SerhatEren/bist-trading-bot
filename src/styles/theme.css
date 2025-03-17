@@ -1,0 +1,283 @@
+:root {
+  /* Dark theme color palette */
+  --bg-primary: #131722;
+  --bg-secondary: #1c2030;
+  --bg-tertiary: #262b3d;
+  --bg-card: #1e2230;
+  --bg-hover: #252a3c;
+  
+  /* Text colors */
+  --text-primary: #e1e1e6;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #64748b;
+  
+  /* Accent colors */
+  --accent-primary: #2962ff;
+  --accent-secondary: #5e81f4;
+  --accent-hover: #4171ff;
+  
+  /* Status colors */
+  --success: #0ecb81;
+  --warning: #f6c000;
+  --danger: #ff3b30;
+  --info: #2962ff;
+  
+  /* Trading specific colors */
+  --buy: #0ecb81;
+  --sell: #ff3b30;
+  --profit: #0ecb81;
+  --loss: #ff3b30;
+  
+  /* Chart colors */
+  --chart-up: #0ecb81;
+  --chart-down: #ff3b30;
+  --chart-grid: #363c4e;
+  --chart-line: #5e81f4;
+  
+  /* Border and shadows */
+  --border-color: #363c4e;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
+  
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  
+  /* Font sizes */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  
+  /* Animation */
+  --transition-speed: 0.2s;
+}
+
+/* Dark theme body styles */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  margin: 0;
+  padding: 0;
+  transition: all var(--transition-speed) ease;
+  line-height: 1.5;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Card styles */
+.card {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  margin-top: 0;
+}
+
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: color var(--transition-speed);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* Button styles */
+.btn {
+  background-color: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-speed), transform var(--transition-speed);
+}
+
+.btn:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-success {
+  background-color: var(--success);
+}
+
+.btn-danger {
+  background-color: var(--danger);
+}
+
+.btn-warning {
+  background-color: var(--warning);
+}
+
+/* Table styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  padding: var(--space-sm) var(--space-md);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: var(--bg-secondary);
+}
+
+td {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+tr:hover {
+  background-color: var(--bg-hover);
+}
+
+/* Status badges */
+.badge {
+  display: inline-block;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 9999px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.badge-success {
+  background-color: rgba(14, 203, 129, 0.2);
+  color: var(--success);
+}
+
+.badge-warning {
+  background-color: rgba(246, 192, 0, 0.2);
+  color: var(--warning);
+}
+
+.badge-danger {
+  background-color: rgba(255, 59, 48, 0.2);
+  color: var(--danger);
+}
+
+.badge-info {
+  background-color: rgba(41, 98, 255, 0.2);
+  color: var(--info);
+}
+
+/* Loading/spinner */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  color: var(--text-secondary);
+}
+
+.spinner {
+  border: 3px solid rgba(94, 129, 244, 0.1);
+  border-radius: 50%;
+  border-top: 3px solid var(--accent-primary);
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+  margin-right: var(--space-sm);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Price and value formatting */
+.profit {
+  color: var(--profit);
+}
+
+.loss {
+  color: var(--loss);
+}
+
+/* Resetting default form styles */
+input, select, textarea, button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Grid layout */
+.react-grid-layout {
+  position: relative;
+  transition: height 200ms ease;
+}
+
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top, width, height;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: rgba(94, 129, 244, 0.2);
+  border: 1px dashed var(--accent-primary);
+  border-radius: var(--radius-md);
+}
+
+.react-resizable-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  box-sizing: border-box;
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2IiBoZWlnaHQ9IjYiIHN0eWxlPSJjb2xvcjojNjQ3NDhCIj48cGF0aCBkPSJNNiA2SDR2LTJoMnYyek00IDRIMnYtMmgydjJ6IiBmaWxsPSJjdXJyZW50Q29sb3IiLz48L3N2Zz4=');
+  background-position: bottom right;
+  padding: 0 3px 3px 0;
+  cursor: se-resize;
+} 

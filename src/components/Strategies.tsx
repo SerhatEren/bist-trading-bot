@@ -1,258 +1,377 @@
-import React, { useState } from 'react'
-import '../styles/Strategies.css'
-
-interface Strategy {
-    id: number
-    name: string
-    description: string
-    type: string
-    parameters: {
-        [key: string]: number | string | boolean
-    }
-    isActive: boolean
-    performance: {
-        winRate: number
-        profitFactor: number
-        sharpeRatio: number
-    }
-}
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { 
+  fetchAllStrategies, 
+  executeStrategy,
+  executeStrategyBacktest
+} from '../services/strategyMockData';
+import { 
+  Strategy, 
+  StrategyStatus, 
+  StrategyType, 
+  ExecutionMode,
+  StrategySignal
+} from '../types/strategy';
+import '../styles/Strategies.css';
 
 const Strategies: React.FC = () => {
-    const [strategies, setStrategies] = useState<Strategy[]>([
-        {
-            id: 1,
-            name: 'Moving Average Crossover',
-            description: 'Buy when fast MA crosses above slow MA, sell when it crosses below',
-            type: 'Trend Following',
-            parameters: {
-                fastPeriod: 10,
-                slowPeriod: 30,
-                signalPeriod: 9,
-            },
-            isActive: true,
-            performance: {
-                winRate: 62.5,
-                profitFactor: 1.8,
-                sharpeRatio: 1.2
-            }
-        },
-        {
-            id: 2,
-            name: 'RSI Reversal',
-            description: 'Buy when RSI is oversold, sell when overbought',
-            type: 'Mean Reversion',
-            parameters: {
-                rsiPeriod: 14,
-                oversold: 30,
-                overbought: 70,
-            },
-            isActive: false,
-            performance: {
-                winRate: 58.3,
-                profitFactor: 1.5,
-                sharpeRatio: 0.9
-            }
-        },
-        {
-            id: 3,
-            name: 'MACD Strategy',
-            description: 'Buy/sell signals based on MACD histogram and signal line crosses',
-            type: 'Momentum',
-            parameters: {
-                fastEMA: 12,
-                slowEMA: 26,
-                signalPeriod: 9,
-            },
-            isActive: true,
-            performance: {
-                winRate: 65.0,
-                profitFactor: 2.1,
-                sharpeRatio: 1.4
-            }
-        }
-    ])
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [filteredStrategies, setFilteredStrategies] = useState<Strategy[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeFilters, setActiveFilters] = useState<{
+    type: StrategyType | 'ALL';
+    status: StrategyStatus | 'ALL';
+    search: string;
+  }>({
+    type: 'ALL',
+    status: 'ALL',
+    search: '',
+  });
+  const [executingStrategy, setExecutingStrategy] = useState<string | null>(null);
+  const [backtestingStrategy, setBacktestingStrategy] = useState<string | null>(null);
+  const [newSignals, setNewSignals] = useState<{[key: string]: StrategySignal[]}>({});
 
-    const [editingStrategy, setEditingStrategy] = useState<Strategy | null>(null)
-    const [isModalOpen, setIsModalOpen] = useState(false)
+  // Fetch strategies from API
+  useEffect(() => {
+    const getStrategies = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchAllStrategies();
+        setStrategies(data);
+        setFilteredStrategies(data);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch strategies');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const toggleStrategyActive = (id: number) => {
-        setStrategies(strategies.map(strategy =>
-            strategy.id === id ? { ...strategy, isActive: !strategy.isActive } : strategy
-        ))
+    getStrategies();
+  }, []);
+
+  // Filter strategies based on active filters
+  useEffect(() => {
+    let filtered = [...strategies];
+
+    // Filter by type
+    if (activeFilters.type !== 'ALL') {
+      filtered = filtered.filter((s) => s.type === activeFilters.type);
     }
 
-    const openEditModal = (strategy: Strategy) => {
-        setEditingStrategy({ ...strategy })
-        setIsModalOpen(true)
+    // Filter by status
+    if (activeFilters.status !== 'ALL') {
+      filtered = filtered.filter((s) => s.status === activeFilters.status);
     }
 
-    const saveStrategy = () => {
-        if (!editingStrategy) return
-
-        setStrategies(strategies.map(strategy =>
-            strategy.id === editingStrategy.id ? editingStrategy : strategy
-        ))
-        setIsModalOpen(false)
-        setEditingStrategy(null)
+    // Filter by search term
+    if (activeFilters.search) {
+      const searchTerm = activeFilters.search.toLowerCase();
+      filtered = filtered.filter(
+        (s) =>
+          s.name.toLowerCase().includes(searchTerm) ||
+          s.description.toLowerCase().includes(searchTerm)
+      );
     }
 
-    const createNewStrategy = () => {
-        const newStrategy: Strategy = {
-            id: strategies.length + 1,
-            name: 'New Strategy',
-            description: 'Description of the strategy',
-            type: 'Custom',
-            parameters: {},
-            isActive: false,
-            performance: {
-                winRate: 0,
-                profitFactor: 0,
-                sharpeRatio: 0
-            }
-        }
-        setEditingStrategy(newStrategy)
-        setIsModalOpen(true)
-    }
+    setFilteredStrategies(filtered);
+  }, [activeFilters, strategies]);
 
-    const handleParameterChange = (key: string, value: string | number | boolean) => {
-        if (!editingStrategy) return
+  // Handle filter changes
+  const handleFilterChange = (filter: 'type' | 'status', value: any) => {
+    setActiveFilters((prev) => ({
+      ...prev,
+      [filter]: value,
+    }));
+  };
 
-        setEditingStrategy({
-            ...editingStrategy,
-            parameters: {
-                ...editingStrategy.parameters,
-                [key]: value
-            }
+  // Handle search
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setActiveFilters((prev) => ({
+      ...prev,
+      search: e.target.value,
+    }));
+  };
+
+  // Execute a strategy
+  const handleExecuteStrategy = async (strategyId: string) => {
+    setExecutingStrategy(strategyId);
+    setNewSignals({});
+    
+    try {
+      const signals = await executeStrategy(strategyId);
+      setNewSignals({ [strategyId]: signals });
+      
+      // Update the strategy in the state with new signals
+      setStrategies(prev => 
+        prev.map(s => {
+          if (s.id === strategyId) {
+            return {
+              ...s,
+              signals: [...signals, ...s.signals],
+              lastExecuted: new Date().toISOString()
+            };
+          }
+          return s;
         })
+      );
+    } catch (err: any) {
+      setError(`Failed to execute strategy: ${err.message}`);
+    } finally {
+      setExecutingStrategy(null);
     }
+  };
 
+  // Run a backtest for a strategy
+  const handleBacktest = async (strategyId: string) => {
+    setBacktestingStrategy(strategyId);
+    
+    try {
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      
+      const updatedStrategy = await executeStrategyBacktest(
+        strategyId,
+        oneMonthAgo.toISOString(),
+        new Date().toISOString()
+      );
+      
+      // Update the strategy in the state with backtest results
+      setStrategies(prev => 
+        prev.map(s => s.id === strategyId ? updatedStrategy : s)
+      );
+    } catch (err: any) {
+      setError(`Failed to run backtest: ${err.message}`);
+    } finally {
+      setBacktestingStrategy(null);
+    }
+  };
+
+  // Render the strategy type badge
+  const renderTypeBadge = (type: StrategyType) => {
+    const classMap = {
+      [StrategyType.TECHNICAL]: 'badge-technical',
+      [StrategyType.MACHINE_LEARNING]: 'badge-ml',
+      [StrategyType.NLP]: 'badge-nlp',
+      [StrategyType.HYBRID]: 'badge-hybrid',
+    };
+
+    return <span className={`strategy-badge ${classMap[type]}`}>{type}</span>;
+  };
+
+  // Render the strategy status badge
+  const renderStatusBadge = (status: StrategyStatus) => {
+    const classMap = {
+      [StrategyStatus.ACTIVE]: 'badge-active',
+      [StrategyStatus.PAUSED]: 'badge-paused',
+      [StrategyStatus.BACKTEST]: 'badge-backtest',
+      [StrategyStatus.DRAFT]: 'badge-draft',
+      [StrategyStatus.ARCHIVED]: 'badge-archived',
+    };
+
+    return <span className={`strategy-badge ${classMap[status]}`}>{status}</span>;
+  };
+
+  // Render execution mode badge
+  const renderExecutionModeBadge = (mode: ExecutionMode) => {
+    const classMap = {
+      [ExecutionMode.PAPER]: 'badge-paper',
+      [ExecutionMode.SEMI_AUTO]: 'badge-semi-auto',
+      [ExecutionMode.FULLY_AUTO]: 'badge-auto',
+    };
+
+    return <span className={`strategy-badge ${classMap[mode]}`}>{mode}</span>;
+  };
+
+  // Format performance metric
+  const formatPerformance = (value: number, asPercent: boolean = false) => {
+    return asPercent
+      ? `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+      : value.toFixed(2);
+  };
+
+  // Loading state
+  if (loading) {
     return (
-        <div className="strategies-container">
-            <div className="strategies-header">
-                <h2>Trading Strategies</h2>
-                <button className="create-strategy-btn" onClick={createNewStrategy}>
-                    Create New Strategy
-                </button>
-            </div>
-
-            <div className="strategies-list">
-                {strategies.map(strategy => (
-                    <div className="strategy-card" key={strategy.id}>
-                        <div className="strategy-header">
-                            <h3>{strategy.name}</h3>
-                            <div className="strategy-controls">
-                                <button
-                                    className="edit-btn"
-                                    onClick={() => openEditModal(strategy)}
-                                >
-                                    Edit
-                                </button>
-                                <button
-                                    className={`toggle-btn ${strategy.isActive ? 'active' : 'inactive'}`}
-                                    onClick={() => toggleStrategyActive(strategy.id)}
-                                >
-                                    {strategy.isActive ? 'Active' : 'Inactive'}
-                                </button>
-                            </div>
-                        </div>
-                        <p className="strategy-type">{strategy.type}</p>
-                        <p className="strategy-description">{strategy.description}</p>
-
-                        <div className="strategy-parameters">
-                            <h4>Parameters</h4>
-                            <div className="parameters-grid">
-                                {Object.entries(strategy.parameters).map(([key, value]) => (
-                                    <div className="parameter" key={key}>
-                                        <span className="parameter-name">{key}:</span>
-                                        <span className="parameter-value">{value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="strategy-performance">
-                            <h4>Performance</h4>
-                            <div className="performance-metrics">
-                                <div className="metric">
-                                    <span className="metric-name">Win Rate:</span>
-                                    <span className="metric-value">{strategy.performance.winRate}%</span>
-                                </div>
-                                <div className="metric">
-                                    <span className="metric-name">Profit Factor:</span>
-                                    <span className="metric-value">{strategy.performance.profitFactor}</span>
-                                </div>
-                                <div className="metric">
-                                    <span className="metric-name">Sharpe Ratio:</span>
-                                    <span className="metric-value">{strategy.performance.sharpeRatio}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {isModalOpen && editingStrategy && (
-                <div className="modal-overlay">
-                    <div className="strategy-modal">
-                        <h2>{editingStrategy.id ? 'Edit Strategy' : 'Create Strategy'}</h2>
-
-                        <div className="form-group">
-                            <label>Name</label>
-                            <input
-                                type="text"
-                                value={editingStrategy.name}
-                                onChange={(e) => setEditingStrategy({ ...editingStrategy, name: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label>Type</label>
-                            <select
-                                value={editingStrategy.type}
-                                onChange={(e) => setEditingStrategy({ ...editingStrategy, type: e.target.value })}
-                            >
-                                <option value="Trend Following">Trend Following</option>
-                                <option value="Mean Reversion">Mean Reversion</option>
-                                <option value="Momentum">Momentum</option>
-                                <option value="Breakout">Breakout</option>
-                                <option value="Custom">Custom</option>
-                            </select>
-                        </div>
-
-                        <div className="form-group">
-                            <label>Description</label>
-                            <textarea
-                                value={editingStrategy.description}
-                                onChange={(e) => setEditingStrategy({ ...editingStrategy, description: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <h3>Parameters</h3>
-                            {Object.entries(editingStrategy.parameters).map(([key, value]) => (
-                                <div className="parameter-input" key={key}>
-                                    <label>{key}</label>
-                                    <input
-                                        type={typeof value === 'number' ? 'number' : 'text'}
-                                        value={value.toString()}
-                                        onChange={(e) => handleParameterChange(
-                                            key,
-                                            typeof value === 'number' ? Number(e.target.value) : e.target.value
-                                        )}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="modal-actions">
-                            <button onClick={() => setIsModalOpen(false)}>Cancel</button>
-                            <button className="save-btn" onClick={saveStrategy}>Save Strategy</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+      <div className="strategies-container">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading strategies...</p>
         </div>
-    )
-}
+      </div>
+    );
+  }
 
-export default Strategies 
+  // Error state
+  if (error) {
+    return (
+      <div className="strategies-container">
+        <div className="error-container">
+          <h2>Error</h2>
+          <p>{error}</p>
+          <button onClick={() => window.location.reload()}>Retry</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="strategies-container">
+      <div className="strategies-header">
+        <h1>Trading Strategies</h1>
+        <div className="strategies-actions">
+          <Link to="/strategies/new" className="button-primary">
+            Create New Strategy
+          </Link>
+        </div>
+      </div>
+
+      <div className="filters-container">
+        <div className="filter-group">
+          <label>Type:</label>
+          <select
+            value={activeFilters.type}
+            onChange={(e) => handleFilterChange('type', e.target.value)}
+          >
+            <option value="ALL">All Types</option>
+            {Object.values(StrategyType).map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Status:</label>
+          <select
+            value={activeFilters.status}
+            onChange={(e) => handleFilterChange('status', e.target.value)}
+          >
+            <option value="ALL">All Statuses</option>
+            {Object.values(StrategyStatus).map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group search-group">
+          <input
+            type="text"
+            placeholder="Search strategies..."
+            value={activeFilters.search}
+            onChange={handleSearch}
+          />
+        </div>
+      </div>
+
+      {filteredStrategies.length === 0 ? (
+        <div className="no-strategies">
+          <p>No strategies found matching your filters.</p>
+          {activeFilters.type !== 'ALL' || activeFilters.status !== 'ALL' || activeFilters.search ? (
+            <button
+              onClick={() =>
+                setActiveFilters({ type: 'ALL', status: 'ALL', search: '' })
+              }
+            >
+              Clear Filters
+            </button>
+          ) : (
+            <Link to="/strategies/new" className="button-primary">
+              Create Your First Strategy
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="strategies-list">
+          {filteredStrategies.map((strategy) => (
+            <div key={strategy.id} className="strategy-card">
+              <div className="strategy-header">
+                <div className="strategy-badges">
+                  {renderTypeBadge(strategy.type)}
+                  {renderStatusBadge(strategy.status)}
+                  {renderExecutionModeBadge(strategy.executionMode)}
+                </div>
+                <h2 className="strategy-name">{strategy.name}</h2>
+                <p className="strategy-description">{strategy.description}</p>
+              </div>
+
+              <div className="strategy-performance">
+                <div className="performance-metric">
+                  <span className="metric-label">Win Rate</span>
+                  <span className="metric-value">{strategy.performance.winRate.toFixed(1)}%</span>
+                </div>
+                <div className="performance-metric">
+                  <span className="metric-label">Profit Factor</span>
+                  <span className="metric-value">{strategy.performance.profitFactor}</span>
+                </div>
+                <div className="performance-metric">
+                  <span className="metric-label">Monthly</span>
+                  <span className={`metric-value ${strategy.performance.monthlyReturns >= 0 ? 'positive' : 'negative'}`}>
+                    {formatPerformance(strategy.performance.monthlyReturns, true)}
+                  </span>
+                </div>
+                <div className="performance-metric">
+                  <span className="metric-label">Yearly</span>
+                  <span className={`metric-value ${strategy.performance.yearlyReturns >= 0 ? 'positive' : 'negative'}`}>
+                    {formatPerformance(strategy.performance.yearlyReturns, true)}
+                  </span>
+                </div>
+              </div>
+
+              {newSignals[strategy.id] && newSignals[strategy.id].length > 0 && (
+                <div className="new-signals-container">
+                  <h3>New Signals Generated</h3>
+                  <div className="signals-list">
+                    {newSignals[strategy.id].map(signal => (
+                      <div key={signal.id} className="signal-item">
+                        <div className="signal-details">
+                          <span className={`signal-side ${signal.side.toLowerCase()}`}>
+                            {signal.side}
+                          </span>
+                          <span className="signal-symbol">{signal.symbol}</span>
+                          <span className="signal-price">${signal.price.toFixed(2)}</span>
+                        </div>
+                        <div className="signal-confidence">
+                          Confidence: {(signal.confidence * 100).toFixed(0)}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="strategy-actions">
+                <Link to={`/strategies/${strategy.id}`} className="button-secondary">
+                  View Details
+                </Link>
+                <Link to={`/strategies/${strategy.id}/edit`} className="button-secondary">
+                  Edit
+                </Link>
+                <button
+                  className="button-primary"
+                  onClick={() => handleExecuteStrategy(strategy.id)}
+                  disabled={executingStrategy === strategy.id || strategy.status !== StrategyStatus.ACTIVE}
+                >
+                  {executingStrategy === strategy.id ? 'Executing...' : 'Execute'}
+                </button>
+                <button
+                  className="button-secondary"
+                  onClick={() => handleBacktest(strategy.id)}
+                  disabled={backtestingStrategy === strategy.id}
+                >
+                  {backtestingStrategy === strategy.id ? 'Running...' : 'Backtest'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Strategies; 

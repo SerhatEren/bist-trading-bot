@@ -1,0 +1,188 @@
+/* OrderPage Stilleri */
+.order-page {
+  padding: 20px;
+}
+
+.order-page h1 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.order-page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+@media (min-width: 992px) {
+  .order-page-content {
+    flex-direction: row;
+  }
+  
+  .order-form-container {
+    flex: 1;
+    max-width: 400px;
+  }
+  
+  .order-list-container {
+    flex: 2;
+  }
+}
+
+/* OrderForm Stilleri */
+.order-form {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.order-form h2 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #555;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.order-form button {
+  width: 100%;
+  padding: 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.order-form button:hover {
+  background-color: #0069d9;
+}
+
+.order-form button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+/* OrderList Stilleri */
+.order-list {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.order-list h2 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.order-list table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.order-list th,
+.order-list td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.order-list th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #555;
+}
+
+.order-list tr:hover {
+  background-color: #f8f9fa;
+}
+
+.cancel-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.2s;
+}
+
+.cancel-button:hover {
+  background-color: #c82333;
+}
+
+/* Durum Stilleri */
+.status-new {
+  color: #007bff;
+  font-weight: 500;
+}
+
+.status-partial {
+  color: #fd7e14;
+  font-weight: 500;
+}
+
+.status-filled {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.status-cancelled {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.status-rejected {
+  color: #dc3545;
+  font-weight: 500;
+}
+
+/* Yükleme ve Boş Durum Stilleri */
+.loading,
+.no-data {
+  padding: 30px;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+} 

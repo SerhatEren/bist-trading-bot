@@ -1,0 +1,376 @@
+/* TradingPage Stilleri */
+.trading-page {
+  padding: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.trading-page h1 {
+  margin-bottom: 24px;
+  color: #2d3748;
+  font-weight: 600;
+  font-size: 1.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+}
+
+.trading-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 992px) {
+  .trading-container {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* BuySellForm Stilleri */
+.trade-form {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.trade-form h2 {
+  margin-bottom: 20px;
+  color: #2d3748;
+  font-size: 1.5rem;
+  font-weight: 600;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.error-message {
+  background-color: #fff5f5;
+  color: #c53030;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border-left: 4px solid #c53030;
+  font-size: 0.875rem;
+}
+
+.success-message {
+  background-color: #f0fff4;
+  color: #2f855a;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border-left: 4px solid #2f855a;
+  font-size: 0.875rem;
+}
+
+.trade-type-toggle {
+  display: flex;
+  margin-bottom: 24px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #4a5568;
+}
+
+.toggle-btn.active {
+  background-color: #ebf8ff;
+  font-weight: 500;
+  color: #3182ce;
+  border-bottom: 2px solid #3182ce;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-control:focus {
+  border-color: #3182ce;
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.2);
+  outline: none;
+}
+
+.price-info {
+  background-color: #f7fafc;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  border: 1px solid #e2e8f0;
+}
+
+.price-label {
+  font-weight: 500;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.price-value {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.order-summary {
+  background-color: #f7fafc;
+  padding: 16px;
+  border-radius: a6px;
+  margin-bottom: 24px;
+  border: 1px solid #e2e8f0;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.summary-row.total {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #2d3748;
+}
+
+.trade-btn {
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.buy-btn {
+  background-color: #38a169;
+}
+
+.buy-btn:hover {
+  background-color: #2f855a;
+}
+
+.sell-btn {
+  background-color: #e53e3e;
+}
+
+.sell-btn:hover {
+  background-color: #c53030;
+}
+
+.trade-btn:disabled {
+  background-color: #a0aec0;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Portföy Durumu Stilleri */
+.portfolio-card {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.portfolio-card h2 {
+  margin-bottom: 20px;
+  color: #2d3748;
+  font-size: 1.5rem;
+  font-weight: 600;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.portfolio-card h3 {
+  margin: 24px 0 16px;
+  color: #4a5568;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.portfolio-balance {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.balance-item {
+  padding: 16px;
+  background-color: #f7fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.balance-label {
+  display: block;
+  font-size: 0.875rem;
+  color: #4a5568;
+  margin-bottom: 8px;
+}
+
+.balance-value {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+/* Pozisyonlar Tablosu */
+.positions-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  margin-bottom: 24px;
+}
+
+.positions-table th,
+.positions-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.positions-table th {
+  background-color: #f7fafc;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.positions-table .symbol {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.positions-table tfoot {
+  background-color: #f7fafc;
+  font-weight: 600;
+}
+
+.portfolio-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.metrics-item {
+  padding: 16px;
+  background-color: #f7fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.metrics-label {
+  display: block;
+  font-size: 0.875rem;
+  color: #4a5568;
+  margin-bottom: 8px;
+}
+
+.metrics-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+/* Kar/Zarar Renkleri */
+.positive {
+  color: #38a169;
+  font-weight: 500;
+}
+
+.negative {
+  color: #e53e3e;
+  font-weight: 500;
+}
+
+/* Yükleme ve Hata Durumları */
+.loading,
+.no-data {
+  padding: 24px;
+  text-align: center;
+  color: #718096;
+  font-style: italic;
+  background-color: #f7fafc;
+  border-radius: 6px;
+  border: 1px dashed #e2e8f0;
+}
+
+/* Add the following to TradingStyles.css */
+
+.portfolio-info {
+  margin: 16px 0;
+  padding: 12px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-row.positive {
+  color: #4caf50;
+}
+
+.info-row.negative {
+  color: #f44336;
+}
+
+.insufficient-funds,
+.insufficient-shares {
+  margin-top: 10px;
+  padding: 8px;
+  color: #fff;
+  background-color: #f44336;
+  border-radius: 4px;
+  font-size: 14px;
+} 
