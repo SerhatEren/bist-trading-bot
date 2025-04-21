@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import apiService from '../../services/api';
+import apiServiceProxy from '../../services/apiFactory';
+import '../../styles/AuthPages.css';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -17,7 +18,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     setLoading(true);
 
     try {
-      await apiService.login(username, password);
+      await apiServiceProxy.login(username, password);
       if (onSuccess) {
         onSuccess();
       } else {

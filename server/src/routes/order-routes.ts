@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import * as orderController from '../controllers/order-controller';
-import { authenticate } from '../middlewares/auth-middleware';
 
 const router = Router();
 
@@ -11,7 +10,6 @@ const router = Router();
  */
 router.post(
   '/', 
-  authenticate, 
   orderController.createOrderValidationRules, 
   orderController.createOrder
 );
@@ -21,29 +19,31 @@ router.post(
  * @desc Tüm emirleri getirme
  * @access Private
  */
-router.get('/', authenticate, orderController.getOrders);
+router.get(
+  '/', 
+  orderController.getOrdersValidationRules,
+  orderController.getOrders
+);
 
 /**
- * @route GET /api/orders/:orderId
+ * @route GET /api/orders/detail
  * @desc Emir detaylarını getirme
  * @access Private
  */
 router.get(
-  '/:orderId', 
-  authenticate, 
-  orderController.getOrderValidationRules, 
+  '/detail',
+  orderController.getOrderValidationRules,
   orderController.getOrder
 );
 
 /**
- * @route DELETE /api/orders/:orderId
+ * @route DELETE /api/orders
  * @desc Emri iptal etme
  * @access Private
  */
 router.delete(
-  '/:orderId', 
-  authenticate, 
-  orderController.cancelOrderValidationRules, 
+  '/',
+  orderController.cancelOrderValidationRules,
   orderController.cancelOrder
 );
 

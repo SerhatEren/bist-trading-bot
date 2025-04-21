@@ -18,6 +18,16 @@ const config = {
     password: process.env.ALGOLAB_PASSWORD || '',
     useMockApi: process.env.USE_MOCK_API === 'true'
   },
+  binance: {
+    testnetApiKey: process.env.BINANCE_TESTNET_API_KEY || '',
+    testnetApiSecret: process.env.BINANCE_TESTNET_SECRET_KEY || '',
+    testnetBaseUrl: process.env.BINANCE_TESTNET_BASE_URL || 'https://testnet.binance.vision/api',
+    testnetWsUrl: process.env.BINANCE_TESTNET_WS_URL || 'wss://stream.testnet.binance.vision/ws'
+    // Add mainnet keys/url here if needed later
+    // apiKey: process.env.BINANCE_API_KEY || '',
+    // apiSecret: process.env.BINANCE_SECRET_KEY || '',
+    // baseUrl: process.env.BINANCE_BASE_URL || 'https://api.binance.com/api'
+  },
   cors: {
     origin: [process.env.CORS_ORIGIN || 'http://localhost:3000', 'http://localhost:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

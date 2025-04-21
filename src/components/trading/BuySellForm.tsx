@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../../services/apiFactory';
-import { OrderSide, OrderType } from '../../types/api';
-import { 
-  formatCurrency, 
-  fromApiPortfolio,
-  Portfolio 
-} from '../../services/mockData';
+import { OrderSide, OrderType, TickerPrice } from '../../types/api';
 import './TradingStyles.css';
+
+// Helper function (move to utils?)
+const formatCurrency = (value: number | null | undefined, decimals = 2): string => {
+  if (value === null || value === undefined) return '-';
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+};
 
 interface BuySellFormProps {
   onSuccess?: () => void;
@@ -14,59 +15,51 @@ interface BuySellFormProps {
 
 const BuySellForm: React.FC<BuySellFormProps> = ({ onSuccess }) => {
   const [symbol, setSymbol] = useState('');
-  const [quantity, setQuantity] = useState<number>(0);
+  const [quantity, setQuantity] = useState<string>('');
   const [isBuy, setIsBuy] = useState(true);
-  const [price, setPrice] = useState<number | null>(null);
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [availableSymbols, setAvailableSymbols] = useState<string[]>([]);
   const [orderType, setOrderType] = useState<OrderType>(OrderType.MARKET);
-  const [limitPrice, setLimitPrice] = useState<number | null>(null);
-  const [portfolioData, setPortfolioData] = useState<Portfolio | null>(null);
+  const [limitPrice, setLimitPrice] = useState<string>('');
 
-  // Load portfolio data from cache
+  // Load available stock symbols (replace with actual Binance symbols)
   useEffect(() => {
-    const cachedData = sessionStorage.getItem('portfolioData');
-    if (cachedData) {
-      try {
-        setPortfolioData(fromApiPortfolio(JSON.parse(cachedData)));
-      } catch (err) {
-        console.error('Error parsing cached portfolio data:', err);
-      }
-    }
-  }, []);
-
-  // Get position for the current symbol
-  const getCurrentPosition = () => {
-    if (!portfolioData || !symbol) return null;
-    return portfolioData.positions.find(p => p.symbol === symbol) || null;
-  };
-
-  const currentPosition = getCurrentPosition();
-
-  // Load available stock symbols
-  useEffect(() => {
-    const symbols = ['GARAN', 'AKBNK', 'ISCTR', 'THYAO', 'ASELS', 'KCHOL', 'TUPRS', 'EREGL', 'BIMAS', 'TSKB'];
+    // Example Binance Symbols - Fetch dynamically later if needed
+    const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBBTC', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT']; 
     setAvailableSymbols(symbols);
+    if (symbols.length > 0) {
+        setSymbol(symbols[0]); // Default to first symbol
+    }
   }, []);
 
-  // Get price information when symbol changes
+  // Get price information when symbol changes (Using REST for now)
   useEffect(() => {
+    setCurrentPrice(null); // Reset price on symbol change
     if (symbol) {
-      try {
-        const stockPrice = apiService.getStockPrice(symbol);
-        setPrice(stockPrice);
-        setLimitPrice(stockPrice);
-      } catch (err) {
-        setPrice(null);
-        setLimitPrice(null);
-      }
-    } else {
-      setPrice(null);
-      setLimitPrice(null);
+        setLoading(true); // Indicate loading price
+        apiService.getStockQuotes([symbol])
+            .then(response => {
+                if (response.data.success && response.data.data.length > 0) {
+                    const price = parseFloat(response.data.data[0].price);
+                    setCurrentPrice(price);
+                    // Set default limit price only if market type or empty
+                    if (orderType === OrderType.MARKET || !limitPrice) {
+                        setLimitPrice(price.toFixed(2)); // Default limit price to current market price
+                    }
+                } else {
+                    setError(`Could not fetch price for ${symbol}`);
+                }
+            })
+            .catch(err => {
+                console.error("Price fetch error:", err);
+                setError(`Could not fetch price for ${symbol}`);
+            })
+            .finally(() => setLoading(false));
     }
-  }, [symbol]);
+  }, [symbol]); // Re-fetch only when symbol changes
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,59 +67,59 @@ const BuySellForm: React.FC<BuySellFormProps> = ({ onSuccess }) => {
     setSuccess(null);
     setLoading(true);
 
+    // Convert quantity and limitPrice from string to number for validation/API call
+    const numQuantity = parseFloat(quantity);
+    const numLimitPrice = orderType === OrderType.LIMIT ? parseFloat(limitPrice) : undefined;
+
     try {
       // Validation
-      if (!symbol) {
-        throw new Error('Please select a stock');
-      }
-
-      if (!quantity || quantity <= 0) {
-        throw new Error('Quantity must be a positive number');
-      }
-
-      if (orderType === OrderType.LIMIT && (!limitPrice || limitPrice <= 0)) {
+      if (!symbol) throw new Error('Please select a symbol');
+      if (isNaN(numQuantity) || numQuantity <= 0) throw new Error('Quantity must be a positive number');
+      if (orderType === OrderType.LIMIT && (numLimitPrice === undefined || isNaN(numLimitPrice) || numLimitPrice <= 0)) {
         throw new Error('Please enter a valid limit price');
       }
+      // TODO: Add balance validation using real portfolioData
 
-      // Execute buy or sell order
-      const orderData = {
+      const orderData: CreateOrderRequest = {
         symbol,
         side: isBuy ? OrderSide.BUY : OrderSide.SELL,
         type: orderType,
-        quantity,
-        price: orderType === OrderType.LIMIT && limitPrice ? limitPrice : undefined
+        quantity: numQuantity,
+        price: numLimitPrice 
       };
 
+      console.log('Submitting Order:', orderData); // Log before sending
       const result = await apiService.createOrder(orderData);
+      console.log('Order Result:', result); // Log result
       
-      setSuccess(`Successfully ${isBuy ? 'purchased' : 'sold'} ${quantity} shares of ${symbol}`);
+      // Use result data if available, otherwise generic success
+      const successMsg = result?.data?.data?.orderId 
+          ? `Order ${result.data.data.orderId} placed successfully for ${numQuantity} ${symbol}`
+          : `Successfully submitted order for ${numQuantity} ${symbol}`;
+      setSuccess(successMsg);
 
       // Reset form
-      setSymbol('');
-      setQuantity(0);
-      setLimitPrice(null);
+      // setSymbol(''); // Keep symbol selected?
+      setQuantity('');
+      setLimitPrice(currentPrice ? currentPrice.toFixed(2) : ''); // Reset limit price to current
       
-      // Call success callback if provided
-      if (onSuccess) {
-        onSuccess();
-      }
+      if (onSuccess) onSuccess();
     } catch (err: any) {
+      console.error("Order submission error:", err.response || err);
       setError(err.response?.data?.message || err.message || 'Transaction failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCurrencyOrNull = (value: number | null) => {
-    if (value === null) return '-';
-    return formatCurrency(value);
-  };
-
   const calculateTotal = () => {
-    if (!symbol || !quantity || quantity <= 0 || !price) return null;
+    const numQuantity = parseFloat(quantity);
+    const priceToUse = orderType === OrderType.LIMIT ? parseFloat(limitPrice) : currentPrice;
+    if (!symbol || isNaN(numQuantity) || numQuantity <= 0 || !priceToUse) return null;
     
-    const orderValue = quantity * (orderType === OrderType.LIMIT && limitPrice ? limitPrice : price);
-    const commission = orderValue * 0.002; // 0.2% commission fee
+    const orderValue = numQuantity * priceToUse;
+    // Use a more realistic commission or fetch from account info later
+    const commission = orderValue * 0.001; // Example: 0.1% commission
     
     return isBuy ? orderValue + commission : orderValue - commission;
   };
@@ -185,10 +178,10 @@ const BuySellForm: React.FC<BuySellFormProps> = ({ onSuccess }) => {
           </select>
         </div>
         
-        {symbol && price && (
+        {symbol && currentPrice && (
           <div className="price-info">
             <span className="price-label">Current Price:</span>
-            <span className="price-value">{formatCurrencyOrNull(price)}</span>
+            <span className="price-value">{formatCurrency(currentPrice, 4)}</span>
           </div>
         )}
         
@@ -198,11 +191,11 @@ const BuySellForm: React.FC<BuySellFormProps> = ({ onSuccess }) => {
             <input
               type="number"
               id="limitPrice"
-              value={limitPrice || ''}
-              onChange={(e) => setLimitPrice(Number(e.target.value))}
+              value={limitPrice}
+              onChange={(e) => setLimitPrice(e.target.value)}
               required={orderType === OrderType.LIMIT}
-              min="0.01"
-              step="0.01"
+              min="0.00000001"
+              step="any"
               className="form-control"
             />
           </div>
@@ -213,82 +206,37 @@ const BuySellForm: React.FC<BuySellFormProps> = ({ onSuccess }) => {
           <input
             type="number"
             id="quantity"
-            value={quantity || ''}
-            onChange={(e) => setQuantity(Number(e.target.value))}
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
             required
-            min="1"
-            step="1"
+            min="0.00000001"
+            step="any"
             className="form-control"
           />
         </div>
         
         <div className="order-summary">
-          {symbol && price && (
+          {symbol && currentPrice && (
             <>
               <div className="price-info">
                 <span className="price-label">Current Price:</span>
-                <span className="price-value">{formatCurrencyOrNull(price)}</span>
+                <span className="price-value">{formatCurrency(currentPrice, 4)}</span>
               </div>
 
-              {portfolioData && (
-                <div className="portfolio-info">
-                  <div className="info-row">
-                    <span>Available Cash:</span>
-                    <span>{formatCurrency(portfolioData.cashBalance)}</span>
-                  </div>
-                  {currentPosition && (
-                    <>
-                      <div className="info-row">
-                        <span>Current Position:</span>
-                        <span>{currentPosition.quantity} shares</span>
-                      </div>
-                      <div className="info-row">
-                        <span>Avg Price:</span>
-                        <span>{formatCurrency(currentPosition.avgPrice)}</span>
-                      </div>
-                      <div className={`info-row ${currentPosition.change >= 0 ? 'positive' : 'negative'}`}>
-                        <span>Unrealized P&L:</span>
-                        <span>{formatCurrency(currentPosition.change)} ({(currentPosition.changePercent).toFixed(2)}%)</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {quantity > 0 && (
+              {parseFloat(quantity) > 0 && (
                 <div className="transaction-summary">
                   <div className="summary-row">
                     <span>Transaction Value:</span>
-                    <span>{formatCurrencyOrNull(
-                      orderType === OrderType.LIMIT && limitPrice 
-                        ? limitPrice * quantity 
-                        : price * quantity
-                    )}</span>
+                    <span>{formatCurrency(calculateTotal())}</span>
                   </div>
                   <div className="summary-row">
-                    <span>Commission (0.2%):</span>
-                    <span>{formatCurrencyOrNull(
-                      orderType === OrderType.LIMIT && limitPrice
-                        ? limitPrice * quantity * 0.002
-                        : price * quantity * 0.002
-                    )}</span>
+                    <span>Commission (0.1%):</span>
+                    <span>{formatCurrency(calculateTotal() * 0.001)}</span>
                   </div>
                   <div className="summary-row total">
                     <span>Total {isBuy ? 'Cost' : 'Proceeds'}:</span>
-                    <span>{formatCurrencyOrNull(calculateTotal())}</span>
+                    <span>{formatCurrency(calculateTotal())}</span>
                   </div>
-
-                  {isBuy && portfolioData && calculateTotal() && calculateTotal()! > portfolioData.cashBalance && (
-                    <div className="insufficient-funds">
-                      Insufficient funds: Transaction cost exceeds available cash
-                    </div>
-                  )}
-
-                  {!isBuy && currentPosition && quantity > currentPosition.quantity && (
-                    <div className="insufficient-shares">
-                      Insufficient shares: You only have {currentPosition.quantity} shares
-                    </div>
-                  )}
                 </div>
               )}
             </>
@@ -298,7 +246,7 @@ const BuySellForm: React.FC<BuySellFormProps> = ({ onSuccess }) => {
         <button
           type="submit"
           className={`trade-btn ${isBuy ? 'buy-btn' : 'sell-btn'}`}
-          disabled={loading || !symbol || !quantity || quantity <= 0 || (orderType === OrderType.LIMIT && (!limitPrice || limitPrice <= 0))}
+          disabled={loading || !symbol || !quantity || parseFloat(quantity) <= 0 || (orderType === OrderType.LIMIT && (!limitPrice || parseFloat(limitPrice) <= 0))}
         >
           {loading 
             ? 'Processing...' 

@@ -5,22 +5,24 @@ export enum Environment {
   DEVELOPMENT = 'development'
 }
 
-// Mevcut ortamı belirle
+// Mevcut ortamı belirle - Simplified
 export const currentEnvironment = (): Environment => {
-  // Check window.__TEST_MODE__ global flag
+  // Remove check for window.__TEST_MODE__ global flag
+  /* 
   if (typeof window !== 'undefined' && window.__TEST_MODE__) {
     console.log('Test mode enabled via global flag');
     return Environment.TEST;
   }
+  */
   
-  // Otherwise check environment variable
-  const env = import.meta.env.VITE_APP_ENV || 'development';
-  console.log('Environment from env variable:', env);
+  // Rely solely on environment variable
+  const env = import.meta.env.VITE_APP_ENV || 'development'; // Default to development
+  console.log('Environment from VITE_APP_ENV:', env);
   
   switch (env) {
     case 'production':
       return Environment.PRODUCTION;
-    case 'test':
+    case 'test': // Use TEST if you want to trigger mock service via env var
       return Environment.TEST;
     default:
       return Environment.DEVELOPMENT;
@@ -34,7 +36,8 @@ console.log('Detected environment:', env);
 // API URL'lerini yapılandır
 export const apiConfig = {
   baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
-  isTestMode: env === Environment.TEST || env === Environment.DEVELOPMENT // Force test mode in dev too
+  // Only enable test mode if explicitly set to TEST
+  isTestMode: env === Environment.TEST 
 };
 
 // Log fonksiyonları

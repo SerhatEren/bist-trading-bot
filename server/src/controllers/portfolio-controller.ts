@@ -1,25 +1,46 @@
 import { Request, Response } from 'express';
-import ApiFactory from '../services/api-factory';
+// import ApiFactory from '../services/api-factory'; // Remove old factory import
+// @ts-ignore - Suppress type error for connector
+import { Spot } from '@binance/connector'; // Import Binance Connector
 import logger from '../utils/logger';
+import config from '../config'; // Import config to access environment variables
 
-// ALGOLAB API istemcisi (gerçek veya mock)
-const algolabClient = ApiFactory.getApiClient();
+// Removed old client instantiation
+// const algolabClient = ApiFactory.getApiClient();
 
 /**
- * Portföy bilgilerini getirme işlemi
+ * Portföy bilgilerini Binance Testnet'ten getirme işlemi
  */
 export const getPortfolio = async (req: Request, res: Response): Promise<void> => {
   try {
-    // ALGOLAB API'den portföy bilgilerini alma
-    const portfolio = await algolabClient.getPortfolio();
+    // Retrieve API keys and base URL from server environment variables
+    const apiKey = config.binance.testnetApiKey; 
+    const apiSecret = config.binance.testnetApiSecret; 
+    const baseURL = config.binance.testnetBaseUrl;
+
+    if (!apiKey || !apiSecret) {
+      logger.error('Binance API keys are not configured on the server.');
+      res.status(500).json({ message: 'API keys not configured.' });
+      return;
+    }
+
+    // Instantiate Binance Spot Client
+    const client = new Spot(apiKey, apiSecret, { baseURL });
+
+    // Fetch account information from Binance
+    const accountInfo = await client.account();
     
     res.status(200).json({
       success: true,
-      data: portfolio
+      // Return the data directly from Binance API response
+      data: accountInfo.data 
     });
-  } catch (error) {
-    const err = error as Error;
-    logger.error('Portföy bilgisi alma hatası:', err);
-    res.status(500).json({ message: err.message || 'Portföy bilgisi alınırken bir hata oluştu' });
+
+  } catch (error: any) { // Catch specific Binance errors if possible
+    logger.error('Binance portföy bilgisi alma hatası:', error);
+    // Try to return Binance error message if available
+    const message = error?.response?.data?.msg || error?.message || 'Portföy bilgisi alınırken bir hata oluştu';
+    const statusCode = error?.response?.status || 500;
+    res.status(statusCode).json({ message });
   }
 }; 

@@ -1,96 +1,90 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+
+// Import MiniTicker and other necessary types
 import { 
-  Portfolio, 
-  formatPercent, 
-  formatDate,
-  fetchHistoricalPerformance,
-  HistoricalValue
-} from '../../services/mockData';
-import PortfolioChart from '../charts/PortfolioChart';
+    BinanceAccountInfo as AccountInfo, // Alias for clarity
+    BinanceBalance as Balance, // Alias for clarity
+    MiniTicker 
+} from '../../types/api'; 
+
 import PositionsGrid from './PositionsGrid';
 import '../../styles/Dashboard.css';
 
+// Define the expected structure for TickerPrice used by PositionsGrid
+interface TickerPrice { 
+  symbol: string; 
+  price: string; // Change to string to match original expectation
+}
+
 interface PortfolioCardProps {
-  portfolioData: Portfolio | null;
+  accountInfo: AccountInfo | null;
+  tickerMap: Map<string, number>;
   isLoading: boolean;
 }
 
-const PortfolioCard = ({ portfolioData, isLoading }: PortfolioCardProps) => {
-  const [activeTimeframe, setActiveTimeframe] = useState<string>('1M');
-  const [historicalData, setHistoricalData] = useState<HistoricalValue[]>([]);
-  const [chartLoading, setChartLoading] = useState<boolean>(false);
+const PortfolioCard = ({ accountInfo, tickerMap, isLoading }: PortfolioCardProps) => {
+  
+  // Calculate metrics using useMemo for efficiency
+  const { totalValue, cashBalance } = useMemo(() => {
+      if (!accountInfo || tickerMap.size === 0) return { totalValue: 0, cashBalance: 0 };
 
-  // Fetch historical data based on timeframe
-  useEffect(() => {
-    if (!portfolioData) return;
+      let tv = 0;
+      let cb = 0;
 
-    const fetchHistoricalData = async () => {
-      // Set loading state
-      setChartLoading(true);
-      
-      try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Create mock historical data based on timeframe
-        const now = new Date();
-        const data: HistoricalValue[] = [];
-        
-        // Number of data points and interval based on timeframe
-        let days = 0;
-        let interval = 1;
-        
-        switch (activeTimeframe) {
-          case '1D':
-            days = 1;
-            interval = 1/24; // hourly
-            break;
-          case '1W':
-            days = 7;
-            interval = 1;
-            break;
-          case '1M':
-            days = 30;
-            interval = 1;
-            break;
-          case '3M':
-            days = 90;
-            interval = 3;
-            break;
-          case '1Y':
-            days = 365;
-            interval = 7;
-            break;
-        }
-        
-        // Generate data points
-        for (let i = days; i >= 0; i -= interval) {
-          const date = new Date(now);
-          date.setDate(date.getDate() - i);
+      const cashAssets = ['USDT', 'BUSD', 'USDC', 'FDUSD', 'TUSD'];
+
+      // Get conversion rates directly from the passed tickerMap
+      const btcUsdtPrice = tickerMap.get('BTCUSDT');
+      const ethUsdtPrice = tickerMap.get('ETHUSDT');
+      const bnbUsdtPrice = tickerMap.get('BNBUSDT');
+
+      accountInfo.balances.forEach((balance: Balance) => {
+          const totalBalance = parseFloat(balance.free) + parseFloat(balance.locked);
+          if (isNaN(totalBalance) || totalBalance <= 0) return; 
           
-          // Create some random variation around the current value
-          const randomFactor = 0.98 + Math.random() * 0.04;
-          const value = Math.round(portfolioData.totalValue * randomFactor);
-          
-          data.push({
-            date: date.toISOString(),
-            value
-          });
-        }
-        
-        setHistoricalData(data);
-      } catch (error) {
-        console.error('Error fetching historical data:', error);
-      } finally {
-        setChartLoading(false);
-      }
-    };
-    
-    fetchHistoricalData();
-  }, [activeTimeframe, portfolioData]);
+          let valueInUsdt = 0;
+          const asset = balance.asset;
+
+          if (cashAssets.includes(asset)) { 
+              valueInUsdt = totalBalance;
+              cb += valueInUsdt;
+          } else {
+              // Use the passed tickerMap for lookups
+              let price = tickerMap.get(asset + 'USDT');
+              if (price) {
+                  valueInUsdt = totalBalance * price;
+              } else {
+                  price = tickerMap.get(asset + 'BTC');
+                  if (price && btcUsdtPrice) {
+                      valueInUsdt = totalBalance * price * btcUsdtPrice;
+                  } else {
+                       price = tickerMap.get(asset + 'ETH');
+                       if (price && ethUsdtPrice) {
+                           valueInUsdt = totalBalance * price * ethUsdtPrice;
+                       } else {
+                           price = tickerMap.get(asset + 'BNB');
+                           if (price && bnbUsdtPrice) {
+                               valueInUsdt = totalBalance * price * bnbUsdtPrice;
+                           } else {
+                               if (totalBalance > 0.0001) {
+                                  // console.debug(`PortfolioCard: Could not find price route for ${asset} (balance: ${totalBalance})`);
+                               }
+                               valueInUsdt = 0; 
+                           }
+                       }
+                  }
+              }
+          }
+          tv += valueInUsdt; 
+      });
+      return { totalValue: tv, cashBalance: cb };
+  }, [accountInfo]); 
+
+  const investedValue = totalValue - cashBalance;
 
   if (isLoading) {
-    return (
+    // ... loading state ...
+     return (
       <div className="dashboard-card portfolio-card">
         <div className="card-header">
           <h2 className="card-title">
@@ -108,26 +102,22 @@ const PortfolioCard = ({ portfolioData, isLoading }: PortfolioCardProps) => {
     );
   }
 
-  if (!portfolioData) {
+  if (!accountInfo) {
+    // ... no data state ...
     return (
       <div className="dashboard-card portfolio-card">
-        <div className="card-header">
+         <div className="card-header">
           <h2 className="card-title">
             <span className="card-icon">💼</span>
             Portfolio
           </h2>
         </div>
         <div className="card-body">
-          <div className="no-data">No portfolio data available</div>
+          <div className="no-data">Portfolio data unavailable. Check API Keys?</div>
         </div>
       </div>
     );
   }
-
-  // Calculate day change percentage for display
-  const dayChangePercentDisplay = portfolioData.dayChangePercent > 0 
-    ? `+${portfolioData.dayChangePercent.toFixed(2)}%` 
-    : `${portfolioData.dayChangePercent.toFixed(2)}%`;
 
   return (
     <div className="dashboard-card portfolio-card">
@@ -136,58 +126,37 @@ const PortfolioCard = ({ portfolioData, isLoading }: PortfolioCardProps) => {
           <span className="card-icon">💼</span>
           Portfolio
         </h2>
-        <a href="/portfolio" className="view-more">View Details</a>
       </div>
       
       <div className="card-body">
         <div className="portfolio-overview">
           <div className="portfolio-metric">
             <div className="metric-value">
-              {formatCurrency(portfolioData.totalValue)}
+              {formatCurrency(totalValue)}
             </div>
-            <div className="metric-label">Total Value</div>
-            <div className={`metric-change ${portfolioData.dayChange >= 0 ? 'positive-change' : 'negative-change'}`}>
-              {portfolioData.dayChange >= 0 ? '↑' : '↓'} {formatCurrency(Math.abs(portfolioData.dayChange))} ({dayChangePercentDisplay})
-            </div>
+            <div className="metric-label">Total Value (est. USDT)</div>
           </div>
           
           <div className="portfolio-metric">
             <div className="metric-value">
-              {formatCurrency(portfolioData.cashBalance)}
+              {formatCurrency(cashBalance)}
             </div>
-            <div className="metric-label">Cash Balance</div>
+            <div className="metric-label">Cash Balance (est. USDT)</div>
           </div>
           
           <div className="portfolio-metric">
             <div className="metric-value">
-              {formatCurrency(portfolioData.invested)}
+              {formatCurrency(investedValue)}
             </div>
-            <div className="metric-label">Invested</div>
+            <div className="metric-label">Invested (est. USDT)</div>
           </div>
         </div>
-        
-        <div className="timeframe-controls">
-          {['1D', '1W', '1M', '3M', '1Y'].map(timeframe => (
-            <button 
-              key={timeframe}
-              className={`timeframe-button ${activeTimeframe === timeframe ? 'active' : ''}`}
-              onClick={() => setActiveTimeframe(timeframe)}
-            >
-              {timeframe}
-            </button>
-          ))}
-        </div>
-        
-        {/* Use our new chart component */}
-        <PortfolioChart 
-          data={historicalData} 
-          isLoading={chartLoading} 
-        />
-        
+                
         <h3 className="positions-heading">Current Positions</h3>
         <PositionsGrid 
-          positions={portfolioData.positions} 
-          isLoading={false} 
+          balances={accountInfo?.balances || []} 
+          tickerMap={tickerMap} // Pass map directly
+          isLoading={isLoading} 
         />
       </div>
     </div>
@@ -198,9 +167,9 @@ const PortfolioCard = ({ portfolioData, isLoading }: PortfolioCardProps) => {
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    currency: 'USD', 
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value);
 }
 

@@ -6,23 +6,35 @@ const router = Router();
 
 /**
  * @route POST /api/auth/register
- * @desc Yeni kullanıcı kaydı
+ * @desc User registration
  * @access Public
  */
-router.post('/register', authController.registerValidationRules, authController.register);
+router.post(
+  '/register',
+  authController.registerValidationRules,
+  authController.register
+);
 
 /**
  * @route POST /api/auth/login
- * @desc Kullanıcı girişi
+ * @desc User login
  * @access Public
  */
-router.post('/login', authController.loginValidationRules, authController.login);
+router.post(
+  '/login',
+  authController.loginValidationRules,
+  authController.login
+);
 
 /**
  * @route GET /api/auth/me
- * @desc Mevcut kullanıcı bilgilerini getirme
+ * @desc Get current user info
  * @access Private
  */
-router.get('/me', authenticate, authController.getCurrentUser);
+router.get(
+  '/me',
+  authenticate,
+  authController.getCurrentUser
+);
 
 export default router; 

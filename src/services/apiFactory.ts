@@ -2,17 +2,31 @@ import apiService from './api';
 import mockApiService from './mockApiService';
 import { apiConfig } from '../config/api';
 import { logger } from '../config/api';
-import { CreateOrderRequest, Order, OrderSide, OrderType } from '../types/api';
-import { AxiosResponse } from 'axios';
+import { 
+    ApiServiceInterface as CentralApiServiceInterface,
+    CreateOrderRequest, 
+    Order, 
+    OrderSide, 
+    OrderType, 
+    BinanceAccountInfo,
+    BinanceTicker24hr,
+    StockQuote,
+    AuthResponse
+} from '../types/api';
 
-// Tüm API servislerinin ortak arayüzü
+// Re-define the local interface to match the central one
 export interface ApiServiceInterface {
-  getStockPrice(symbol: string): number;
-  createOrder(orderData: CreateOrderRequest): Promise<AxiosResponse<Order>>;
-  getPortfolio(): Promise<AxiosResponse<any>>;
-  getOrders(): Promise<AxiosResponse<Order[]>>;
-  buyStock?(symbol: string, quantity: number): Promise<AxiosResponse<Order>>;
-  sellStock?(symbol: string, quantity: number): Promise<AxiosResponse<Order>>;
+  createOrder(orderData: CreateOrderRequest): Promise<Order>;
+  getPortfolio(): Promise<BinanceAccountInfo>;
+  getOrders(symbol: string): Promise<Order[]>;
+  buyStock?(symbol: string, quantity: number): Promise<Order>;
+  sellStock?(symbol: string, quantity: number): Promise<Order>;
+  getStockQuotes(symbols: string[]): Promise<StockQuote[]>;
+  getStockDetails(symbol: string): Promise<BinanceTicker24hr>;
+  logout(): void;
+  login(username: string, password: string): Promise<AuthResponse>;
+  register(username: string, email: string, password: string): Promise<AuthResponse>;
+  isAuthenticated(): boolean;
 }
 
 // Test ortamında mockApiService, gerçek ortamda apiService döndürür
@@ -22,7 +36,7 @@ const getApiService = (): ApiServiceInterface => {
     return mockApiService as unknown as ApiServiceInterface;
   } else {
     logger.info('Gerçek API servisi kullanılıyor.');
-    return apiService as unknown as ApiServiceInterface;
+    return apiService;
   }
 };
 
@@ -31,7 +45,7 @@ const apiServiceInstance = getApiService();
 
 // Doğrudan çağırılabilir metot ekleyelim
 const apiServiceProxy = new Proxy(apiServiceInstance, {
-  get: (target, prop) => {
+  get: (target, prop, receiver) => {
     // buyStock ve sellStock özel durumları için
     if (prop === 'buyStock' && !target.buyStock) {
       return (symbol: string, quantity: number) => {
@@ -55,7 +69,14 @@ const apiServiceProxy = new Proxy(apiServiceInstance, {
       };
     }
     
-    return target[prop as keyof ApiServiceInterface];
+    // Ensure methods are called with the correct 'this' context
+    const value = target[prop as keyof ApiServiceInterface];
+    if (typeof value === 'function') {
+      // Bind the function to the original instance
+      return value.bind(target);
+    }
+    // Return properties directly
+    return Reflect.get(target, prop, receiver);
   }
 });
 

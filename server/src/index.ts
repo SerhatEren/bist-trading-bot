@@ -1,4 +1,6 @@
 import express from 'express';
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -7,9 +9,21 @@ import routes from './routes';
 import { errorHandler, notFoundHandler } from './middlewares/error-middleware';
 import config from './config';
 import logger from './utils/logger';
+import { initializeWebSocketService } from './services/websocket-service';
 
 // Express uygulaması oluşturma
 const app = express();
+
+// Create HTTP server from Express app
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: config.cors.origin,
+    methods: ["GET", "POST"]
+  }
+});
 
 // CORS yapılandırması
 app.use(cors({
@@ -44,12 +58,16 @@ app.use(notFoundHandler);
 // Genel hata işleyici
 app.use(errorHandler);
 
+// Initialize WebSocket Service after Socket.IO is setup
+initializeWebSocketService(io);
+
 // Sunucuyu başlatma
 const PORT = config.server.port;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   logger.info(`Server started on port ${PORT}`);
   logger.info(`Environment: ${config.server.env}`);
   logger.info(`CORS enabled for: ${config.cors.origin}`);
+  logger.info('Socket.IO server initialized');
 });
 
 // Beklenmeyen hataları yakalama
@@ -63,4 +81,4 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-export default app; 
+export { app, io }; 

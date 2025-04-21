@@ -1,23 +1,21 @@
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import {
   AuthResponse,
-  QuotesResponse,
-  StockDetailsResponse,
-  OrderRequest,
-  OrderResponse,
-  OrdersResponse,
-  PortfolioResponse,
   OrderSide,
   OrderType,
   Order,
   CreateOrderRequest,
-  ApiServiceInterface
+  ApiServiceInterface,
+  BinanceAccountInfo,
+  BinanceTicker24hr,
+  StockQuote,
+  ApiError
 } from '../types/api';
 
-// API URL'ini ortam değişkeninden veya varsayılan değerden al
+// API URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-// API istemcisi ve tokenı yönetecek sınıf
+// API Client - Add implements
 class ApiService implements ApiServiceInterface {
   private api: AxiosInstance;
 
@@ -30,10 +28,13 @@ class ApiService implements ApiServiceInterface {
       }
     });
 
-    // İstek interceptor'ı - token ekleme vb.
+    // ---- Add Interceptors ----
+
+    // Request interceptor - add auth token if available (Example: using localStorage)
     this.api.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('token');
+        // Assuming token is stored in localStorage after login
+        const token = localStorage.getItem('authToken'); 
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -42,103 +43,133 @@ class ApiService implements ApiServiceInterface {
       (error) => Promise.reject(error)
     );
 
-    // Yanıt interceptor'ı - hata işleme vb.
+    // Response interceptor - handle errors and extract data
     this.api.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        // Oturum süresi dolmuşsa kullanıcıyı çıkış sayfasına yönlendir
-        if (error.response && error.response.status === 401) {
-          localStorage.removeItem('token');
-          window.location.href = '/login';
+      (response: AxiosResponse) => {
+        // Check for success field from backend wrapper if present
+        // if (response.data && response.data.success === false) {
+        //   return Promise.reject(response.data); 
+        // }
+        // Return only the data part of the response on success
+        return response.data.data; // Assuming backend wraps actual data in a `data` field
+      },
+      (error: AxiosError<ApiError>) => {
+        // Handle different kinds of errors
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          console.error('API Error Response:', error.response.data);
+          console.error('Status:', error.response.status);
+          console.error('Headers:', error.response.headers);
+          // Return a structured error or throw a custom error
+          return Promise.reject({
+            message: error.response.data?.message || 'An error occurred',
+            status: error.response.status
+          });
+        } else if (error.request) {
+          // The request was made but no response was received
+          console.error('API No Response:', error.request);
+          return Promise.reject({ message: 'No response received from server.' });
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.error('API Request Setup Error:', error.message);
+          return Promise.reject({ message: error.message });
         }
-        return Promise.reject(error);
       }
     );
   }
 
-  // Token ayarlama
-  public setToken(token: string): void {
-    localStorage.setItem('token', token);
+  // ---- Implement ApiServiceInterface Methods ----
+
+  // Authentication methods (implement if needed, otherwise keep as stubs/remove)
+  async login(username: string, password: string): Promise<AuthResponse> {
+    // Example implementation:
+    // const response = await this.api.post<AuthResponse>('/auth/login', { username, password });
+    // localStorage.setItem('authToken', response.data.token); // Assuming AuthResponse includes token
+    // return response; // Interceptor will extract data
+    throw new Error('Login method not implemented.');
   }
 
-  // Çıkış yapma
-  public logout(): void {
-    localStorage.removeItem('token');
+  logout(): void {
+    localStorage.removeItem('authToken');
+    // Optionally: Call a backend logout endpoint
+    console.log('Logged out');
   }
 
-  // Kullanıcı Kaydı
-  public async register(username: string, email: string, password: string): Promise<AuthResponse> {
-    const response = await this.api.post<AuthResponse>('/auth/register', {
-      username,
-      email,
-      password
-    });
-    return response.data;
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('authToken');
   }
 
-  // Kullanıcı Girişi
-  public async login(username: string, password: string): Promise<AxiosResponse<{ token: string }>> {
-    const response = await this.api.post('/auth/login', { username, password });
-    const { data } = response;
-    if (data.token) {
-      this.setToken(data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-    }
-    return response;
+  async register(username: string, email: string, password: string): Promise<AuthResponse> {
+    // Example implementation:
+    // const response = await this.api.post<AuthResponse>('/auth/register', { username, email, password });
+    // localStorage.setItem('authToken', response.data.token);
+    // return response;
+    throw new Error('Register method not implemented.');
   }
 
-  // Mevcut Kullanıcı Bilgileri
-  public async getCurrentUser() {
-    const response = await this.api.get('/auth/me');
-    return response.data;
+  // Market Data Methods
+  // Note: Return types now reflect the data extracted by the interceptor
+  
+  // Assumes backend transforms Binance response to StockQuote[]
+  public async getStockQuotes(symbols: string[]): Promise<StockQuote[]> { 
+    const response = await this.api.get<{ data: StockQuote[] }>(`/market/quotes?symbols=${symbols.join(',')}`);
+    return response as unknown as StockQuote[]; // Interceptor extracts .data.data
+  }
+  
+  // Returns raw BinanceTicker24hr data
+  public async getStockDetails(symbol: string): Promise<BinanceTicker24hr> {
+    const response = await this.api.get<{ data: BinanceTicker24hr }>(`/market/stocks/${symbol}`);
+    return response as unknown as BinanceTicker24hr; // Interceptor extracts .data.data
   }
 
-  // Hisse Senedi Fiyatları
-  public async getStockQuotes(symbols: string[]): Promise<QuotesResponse> {
-    const response = await this.api.get<QuotesResponse>(`/market/quotes?symbols=${symbols.join(',')}`);
-    return response.data;
+  // Order Methods
+  public async createOrder(orderData: CreateOrderRequest): Promise<Order> {
+    const response = await this.api.post<{ data: Order }>('/orders', orderData);
+    return response as unknown as Order; // Interceptor extracts .data.data
   }
 
-  // Hisse Senedi Detayları
-  public async getStockDetails(symbol: string): Promise<StockDetailsResponse> {
-    const response = await this.api.get<StockDetailsResponse>(`/market/stocks/${symbol}`);
-    return response.data;
+  public async getOrders(symbol: string): Promise<Order[]> {
+    const response = await this.api.get<{ data: Order[] }>(`/orders?symbol=${symbol}`);
+    return response as unknown as Order[]; // Interceptor extracts .data.data
   }
 
-  // Emir Oluşturma
-  public async createOrder(orderData: CreateOrderRequest): Promise<AxiosResponse<Order>> {
-    const response = await this.api.post('/orders', orderData);
-    return response;
+  // Needs adjustment based on how getOrder is implemented (query params?)
+  public async getOrder(orderId: string): Promise<Order> {
+    // Assuming getOrder backend endpoint expects symbol and orderId/origClientOrderId as query params
+    // The actual parameters needed depend on your backend implementation
+    // This method signature might need changing in ApiServiceInterface too.
+    // Example: getOrder(symbol: string, params: { orderId?: number; origClientOrderId?: string })
+    const response = await this.api.get<{ data: Order }>(`/orders/detail?orderId=${orderId}`); // Adjust endpoint/params as needed
+    return response as unknown as Order; // Interceptor extracts .data.data
   }
 
-  // Tüm Emirleri Listeleme
-  public async getOrders(): Promise<AxiosResponse<Order[]>> {
-    return this.api.get('/orders');
+  public async cancelOrder(orderId: string): Promise<any> {
+    // Assuming cancelOrder backend expects symbol and orderId/origClientOrderId in body or params?
+    // Let's assume body based on controller validation logic.
+    // This method signature might need changing too.
+    // Example: cancelOrder(symbol: string, params: { orderId?: number; origClientOrderId?: string })
+    const response = await this.api.delete<{ data: any }>(`/orders`, { data: { orderId } }); // Sending orderId in body for DELETE
+    return response; // Interceptor extracts .data.data
   }
 
-  // Emir Detayı Görüntüleme
-  public async getOrder(orderId: string): Promise<OrderResponse> {
-    const response = await this.api.get<OrderResponse>(`/orders/${orderId}`);
-    return response.data;
+  // Portfolio Method
+  public async getPortfolio(): Promise<BinanceAccountInfo> {
+    const response = await this.api.get<{ data: BinanceAccountInfo }>('/portfolio');
+    return response as unknown as BinanceAccountInfo; // Interceptor extracts .data.data
   }
 
-  // Emir İptal Etme
-  public async cancelOrder(orderId: string): Promise<AxiosResponse<void>> {
-    return this.api.delete(`/orders/${orderId}`);
+  // getMarketData - same as getStockDetails
+  public async getMarketData(symbol: string): Promise<BinanceTicker24hr> {
+    // Assuming a dedicated market-data endpoint exists, or reuse getStockDetails
+    // const response = await this.api.get<{ data: BinanceTicker24hr }>(`/market-data/${symbol}`);
+    // return response as unknown as BinanceTicker24hr;
+    // OR simply reuse getStockDetails if they are the same:
+    return this.getStockDetails(symbol);
   }
 
-  // Portföy Görüntüleme
-  public async getPortfolio(): Promise<AxiosResponse<any>> {
-    return this.api.get('/portfolio');
-  }
-
-  // Piyasa verileri
-  public async getMarketData(symbol: string): Promise<AxiosResponse<any>> {
-    return this.api.get(`/market-data/${symbol}`);
-  }
-
-  // Hisse senedi al
-  public async buyStock(symbol: string, quantity: number): Promise<AxiosResponse<Order>> {
+  // Convenience Methods (Optional)
+  public async buyStock(symbol: string, quantity: number): Promise<Order> {
     return this.createOrder({
       symbol,
       side: OrderSide.BUY,
@@ -147,8 +178,7 @@ class ApiService implements ApiServiceInterface {
     });
   }
 
-  // Hisse senedi sat
-  public async sellStock(symbol: string, quantity: number): Promise<AxiosResponse<Order>> {
+  public async sellStock(symbol: string, quantity: number): Promise<Order> {
     return this.createOrder({
       symbol,
       side: OrderSide.SELL,
@@ -157,25 +187,8 @@ class ApiService implements ApiServiceInterface {
     });
   }
 
-  // Hisse senedi fiyatını getir
-  public getStockPrice(symbol: string): number {
-    // Gerçek API'da bu metod, ilgili hisse senedi için güncel fiyatı getiren bir endpoint'e istek yapacaktır
-    // Test için sabit fiyatlar
-    const mockPrices: Record<string, number> = {
-      'GARAN': 16.5,
-      'AKBNK': 12.5,
-      'ISCTR': 11.2,
-      'THYAO': 24.8,
-      'ASELS': 30.2,
-      'KCHOL': 42.6,
-      'TUPRS': 92.4,
-      'EREGL': 16.8,
-      'BIMAS': 62.5,
-      'TSKB': 2.7
-    };
-    
-    return mockPrices[symbol] || 0;
-  }
+  // REMOVED MOCK FUNCTION getStockPrice
+
 }
 
 // Singleton instance

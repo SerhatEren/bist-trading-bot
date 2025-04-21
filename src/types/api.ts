@@ -248,10 +248,10 @@ export interface ApiResponse<T> {
 }
 
 export type QuotesResponse = ApiResponse<StockQuote[]>;
-export type StockDetailsResponse = ApiResponse<StockDetails>;
+export type StockDetailsResponse = ApiResponse<BinanceTicker24hr>;
 export type OrderResponse = ApiResponse<Order>;
 export type OrdersResponse = ApiResponse<Order[]>;
-export type PortfolioResponse = ApiResponse<Portfolio>;
+export type PortfolioResponse = ApiResponse<BinanceAccountInfo>;
 
 export interface CreateOrderRequest {
   symbol: string;
@@ -262,11 +262,96 @@ export interface CreateOrderRequest {
   stopPrice?: number;
 }
 
+// --- Start Binance Specific Types ---
+
+// Individual asset balance from account endpoint
+export interface BinanceBalance {
+  asset: string;
+  free: string; // Available balance (string representation of a number)
+  locked: string; // Locked balance (string representation of a number)
+}
+
+// Structure for Binance account information (Portfolio)
+export interface BinanceAccountInfo {
+  makerCommission: number;
+  takerCommission: number;
+  buyerCommission: number;
+  sellerCommission: number;
+  commissionRates: {
+    maker: string;
+    taker: string;
+    buyer: string;
+    seller: string;
+  };
+  canTrade: boolean;
+  canWithdraw: boolean;
+  canDeposit: boolean;
+  brokered: boolean;
+  requireSelfTradePrevention: boolean;
+  preventSor: boolean;
+  updateTime: number;
+  accountType: string; // e.g., SPOT
+  balances: BinanceBalance[];
+  permissions: string[]; // e.g., ["SPOT", "MARGIN"]
+  uid: number;
+}
+
+// Structure for Binance 24hr Ticker statistics (Market Data / Stock Details)
+export interface BinanceTicker24hr {
+  symbol: string;
+  priceChange: string;
+  priceChangePercent: string;
+  weightedAvgPrice: string;
+  prevClosePrice: string;
+  lastPrice: string;
+  lastQty: string;
+  bidPrice: string;
+  bidQty: string;
+  askPrice: string;
+  askQty: string;
+  openPrice: string;
+  highPrice: string;
+  lowPrice: string;
+  volume: string;
+  quoteVolume: string;
+  openTime: number;
+  closeTime: number;
+  firstId: number; // First tradeId
+  lastId: number; // Last tradeId
+  count: number; // Trade count
+}
+
+// Structure for WebSocket Mini Ticker Stream (!miniTicker@arr)
+export interface MiniTicker {
+  e: string; // Event type (e.g., "24hrMiniTicker")
+  E: number; // Event time
+  s: string; // Symbol
+  c: string; // Last price
+  o: string; // Open price
+  h: string; // High price
+  l: string; // Low price
+  v: string; // Total traded base asset volume
+  q: string; // Total traded quote asset volume
+}
+
+// --- End Binance Specific Types ---
+
 export interface ApiServiceInterface {
-  getStockPrice(symbol: string): number;
-  createOrder(orderData: CreateOrderRequest): Promise<any>;
-  getPortfolio(): Promise<any>;
-  getOrders(): Promise<any>;
+  // Authentication methods
+  login(username: string, password: string): Promise<AuthResponse>;
+  logout(): void;
+  isAuthenticated(): boolean;
+  register(username: string, email: string, password: string): Promise<AuthResponse>;
+  
+  // API methods
+  getStockQuotes(symbols: string[]): Promise<StockQuote[]>;
+  getStockDetails(symbol: string): Promise<BinanceTicker24hr>;
+  createOrder(orderData: CreateOrderRequest): Promise<Order>;
+  getPortfolio(): Promise<BinanceAccountInfo>;
+  getOrders(symbol: string): Promise<Order[]>;
+  getOrder(orderId: string): Promise<Order>;
+  cancelOrder(orderId: string): Promise<any>;
+  getMarketData(symbol: string): Promise<BinanceTicker24hr>;
   buyStock?(symbol: string, quantity: number): Promise<any>;
   sellStock?(symbol: string, quantity: number): Promise<any>;
 }
@@ -280,4 +365,4 @@ export interface ApiError {
     status?: number;
   };
   message: string;
-} 
+}

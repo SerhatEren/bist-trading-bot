@@ -2,39 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
-import axios from 'axios'
-import { environment } from './config/environment'
-
-// Add global type declaration for test mode
-declare global {
-  interface Window {
-    __TEST_MODE__?: boolean;
-  }
-}
-
-// Force test mode for development
-window.__TEST_MODE__ = true;
-
-// Add console debugging to track rendering
-console.log('App starting in environment:', 
-  environment.isTestMode ? 'TEST MODE' : environment.env);
-
-// Configure Axios defaults
-axios.defaults.baseURL = environment.apiUrl
-
-// Configure CORS
-axios.defaults.headers.common['Access-Control-Allow-Origin'] = '*'
-axios.defaults.headers.common['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-axios.defaults.headers.common['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-
-// Configure request interceptor for error handling
-axios.interceptors.response.use(
-  response => response,
-  error => {
-    console.error('API Error:', error.response?.data?.message || error.message);
-    return Promise.reject(error);
-  }
-);
+import { MarketDataProvider } from './contexts/MarketDataContext'
 
 // Add error handling for script loading
 window.addEventListener('error', (event) => {
@@ -111,11 +79,13 @@ rootElement.style.backgroundColor = '#ffffff';
 
 const root = ReactDOM.createRoot(rootElement);
 
-// Render the app with error boundary
+// Render the app with error boundary AND MarketDataProvider
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <MarketDataProvider>
+        <App />
+      </MarketDataProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );
