@@ -1,27 +1,28 @@
 import { MLPrediction, NLPSentiment, TechnicalIndicators } from '../types/strategy';
 
-// Base URL for the model service API
-const MODEL_API_BASE_URL = 'http://localhost:5000/api';
+// Base URL for the *main backend* API which will proxy requests to the model service
+// Use environment variable or default to Node.js server port
+const BACKEND_API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-// Interface for model API responses
-interface ModelAPIResponse<T> {
+// Interface for backend API responses (assuming a consistent structure)
+interface BackendAPIResponse<T> {
   success: boolean;
   data?: T;
+  message?: string; // Or error property depending on backend implementation
   error?: string;
 }
 
 /**
- * Service to communicate with Python-based machine learning and NLP models
- * This is a placeholder implementation that will be replaced with actual API calls
- * when the Python backend is implemented.
+ * Service to communicate with the main backend for ML-related operations.
+ * The main backend will then communicate with the Python ML service.
  */
 export class ModelBridgeService {
   private static instance: ModelBridgeService;
-  private apiKey: string | null = null;
+  private apiKey: string | null = null; // Might be JWT token for main backend
 
   private constructor() {
-    // Initialize with API key from environment if available
-    this.apiKey = null;
+    // TODO: Initialize with JWT token from auth context/local storage if needed
+    this.apiKey = null; // Example: localStorage.getItem('authToken');
   }
 
   /**
@@ -35,14 +36,14 @@ export class ModelBridgeService {
   }
 
   /**
-   * Set the API key for authentication
+   * Set the API key/token (e.g., JWT) for authentication with the main backend
    */
-  public setApiKey(apiKey: string): void {
-    this.apiKey = apiKey;
+  public setAuthToken(token: string | null): void {
+    this.apiKey = token;
   }
 
   /**
-   * Make a request to the model API
+   * Make a request to the main backend API
    */
   private async makeRequest<T>(
     endpoint: string,
@@ -54,6 +55,7 @@ export class ModelBridgeService {
         'Content-Type': 'application/json',
       };
 
+      // Use the token for Authorization header if available (standard JWT)
       if (this.apiKey) {
         headers['Authorization'] = `Bearer ${this.apiKey}`;
       }
@@ -64,22 +66,34 @@ export class ModelBridgeService {
         body: data ? JSON.stringify(data) : undefined,
       };
 
-      const response = await fetch(`${MODEL_API_BASE_URL}${endpoint}`, options);
-      const result: ModelAPIResponse<T> = await response.json();
+      const response = await fetch(`${BACKEND_API_BASE_URL}${endpoint}`, options);
+      const result: BackendAPIResponse<T> = await response.json();
 
-      if (!result.success) {
-        throw new Error(result.error || 'Unknown error occurred');
+      if (!response.ok || !result.success) {
+          const errorMsg = result.error || result.message || 'Unknown backend error occurred';
+          console.error(`Backend API error for ${method} ${endpoint}:`, errorMsg, result);
+          throw new Error(errorMsg);
+      }
+
+      // Assuming successful responses have data
+      if (result.data === undefined) {
+          console.warn(`Backend API success for ${method} ${endpoint} but no data returned.`);
+          // Return null or an empty object/array depending on expected type T
+          // Throwing an error might be safer if data is always expected
+          throw new Error('No data received from backend');
       }
 
       return result.data as T;
+
     } catch (error) {
-      console.error('Error making model API request:', error);
+      console.error(`Error making backend API request to ${endpoint}:`, error);
+      // Re-throw the error so UI components can handle it
       throw error;
     }
   }
 
   /**
-   * Get technical indicators for a symbol
+   * Get technical indicators for a symbol (proxied through backend)
    * @param symbol The stock symbol to get indicators for
    * @param timeframe The timeframe for the indicators (e.g. '1d', '1h')
    */
@@ -87,31 +101,33 @@ export class ModelBridgeService {
     symbol: string,
     timeframe: string = '1d'
   ): Promise<TechnicalIndicators> {
-    // In a real implementation, this would call the Python API
-    // For now, we'll return mock data
+    // Call the main backend endpoint, which will then call the ML service
     return this.makeRequest<TechnicalIndicators>(
-      `/indicators/${symbol}?timeframe=${timeframe}`
+      `/ml/indicators/${symbol}?timeframe=${timeframe}` // Prefixed endpoint
     );
   }
 
   /**
-   * Get sentiment analysis for a symbol
+   * Get sentiment analysis for news related to a symbol (proxied through backend)
    * @param symbol The stock symbol to analyze
-   * @param sources The sources to include (default: all)
+   * @param sources - NOTE: This parameter might be deprecated if backend fetches news
    */
   public async getSentimentAnalysis(
     symbol: string,
-    sources: string[] = ['twitter', 'news', 'reddit']
+    sources?: string[] // Making sources optional as backend might decide
   ): Promise<NLPSentiment> {
+     // Call the main backend endpoint. Backend will fetch news, call ML sentiment.
+     // We might only need the symbol here if the backend handles news fetching.
     return this.makeRequest<NLPSentiment>(
-      `/sentiment/analyze`,
+      `/ml/sentiment/analyze`,
       'POST',
-      { symbol, sources }
+      { symbol } // Send only symbol, backend fetches news & text for this symbol
+      // If backend expects text: { text: "some news text..." }
     );
   }
 
   /**
-   * Get price prediction for a symbol
+   * Get price prediction for a symbol (proxied through backend)
    * @param symbol The stock symbol to predict
    * @param timeframe The prediction timeframe
    * @param modelType The type of model to use (optional)
@@ -121,34 +137,34 @@ export class ModelBridgeService {
     timeframe: string = '1d',
     modelType?: string
   ): Promise<MLPrediction> {
+     // Call the main backend endpoint. Backend gets data, calls ML prediction.
     return this.makeRequest<MLPrediction>(
-      `/prediction/price`,
+      `/ml/prediction/price`,
       'POST',
+      // Send parameters the backend needs to prepare data for the ML service
       { symbol, timeframe, modelType }
     );
   }
 
+  // --- Methods for unimplemented ML service endpoints ---
+  // These will also need corresponding endpoints in the main backend
+
   /**
-   * Execute a custom model
-   * @param modelId The ID of the custom model to execute
-   * @param inputs The inputs for the model
+   * Execute a custom model (proxied through backend)
    */
   public async executeCustomModel(
     modelId: string,
     inputs: Record<string, any>
   ): Promise<any> {
     return this.makeRequest<any>(
-      `/models/execute/${modelId}`,
+      `/ml/models/execute/${modelId}`, // Prefixed endpoint
       'POST',
       inputs
     );
   }
 
   /**
-   * Train a new model or retrain an existing one
-   * @param modelType The type of model to train
-   * @param config The configuration for training
-   * @param modelId Optional ID of an existing model to retrain
+   * Train a new model or retrain an existing one (proxied through backend)
    */
   public async trainModel(
     modelType: string,
@@ -156,30 +172,29 @@ export class ModelBridgeService {
     modelId?: string
   ): Promise<{ modelId: string; status: string }> {
     return this.makeRequest<{ modelId: string; status: string }>(
-      `/models/train`,
+      `/ml/models/train`, // Prefixed endpoint
       'POST',
       { modelType, config, modelId }
     );
   }
 
   /**
-   * Get the status of a model training job
-   * @param jobId The ID of the training job
+   * Get the status of a model training job (proxied through backend)
    */
   public async getTrainingStatus(
     jobId: string
   ): Promise<{ status: string; progress: number; message?: string }> {
     return this.makeRequest<{ status: string; progress: number; message?: string }>(
-      `/models/train/status/${jobId}`
+      `/ml/models/train/status/${jobId}` // Prefixed endpoint
     );
   }
 
   /**
-   * Get a list of available models
+   * Get a list of available models (proxied through backend)
    */
   public async getAvailableModels(): Promise<{ id: string; name: string; type: string; accuracy: number }[]> {
     return this.makeRequest<{ id: string; name: string; type: string; accuracy: number }[]>(
-      '/models'
+      '/ml/models' // Prefixed endpoint
     );
   }
 }

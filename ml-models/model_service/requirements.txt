@@ -1,0 +1,13 @@
+Flask>=2.0.0
+Flask-Cors>=3.0.0
+python-dotenv>=0.19.0
+tensorflow>=2.8.0 # Or the version compatible with your .h5 model
+transformers>=4.15.0 # Or a version compatible with your model
+torch>=1.10.0 # Required by many Hugging Face models
+numpy>=1.19.0
+scikit-learn>=1.0.0 # For MinMaxScaler
+joblib>=1.1.0 # For loading the scaler
+accelerate>=0.12.0 # Often needed by transformers
+yfinance>=0.2.0 # Added for fetch_data.py
+pandas>=1.3.0   # Added for fetch_data.py (yf dependency)
+# Add any other specific dependencies your models might need

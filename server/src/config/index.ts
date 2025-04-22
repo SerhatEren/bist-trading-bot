@@ -39,6 +39,14 @@ const config = {
   },
   logging: {
     level: process.env.LOG_LEVEL || 'info'
+  },
+  // Add ML Service configuration
+  mlService: {
+      baseUrl: process.env.ML_SERVICE_URL || 'http://localhost:5000'
+  },
+  // Add News configuration
+  news: {
+      rssUrl: process.env.NEWS_RSS_URL || 'https://www.hurriyet.com.tr/rss/ekonomi/'
   }
 };
 
